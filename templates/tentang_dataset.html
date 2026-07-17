@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tentang Dataset - EcoSort AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="/" class="nav-brand">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 4 13V7a1 1 0 0 1 1-1h6a7 7 0 0 1 7 7 7 7 0 0 1-7 7Z"/><path d="M11 20v-9"/><path d="M4 7c4 0 7 3 7 7"/></svg>
+            <span>EcoSort AI</span>
+        </a>
+        <button class="nav-toggle" id="navToggle" aria-label="Buka menu navigasi">
+            <svg class="icon" id="iconMenu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+            <svg class="icon" id="iconClose" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+        </button>
+        <ul class="nav-menu" id="navMenu">
+            <li><a href="/">Beranda</a></li>
+            <li><a href="/klasifikasi">Klasifikasi</a></li>
+            <li><a href="/tentang-dataset" class="active">Tentang Dataset</a></li>
+            <li><a href="/cara-penggunaan">Cara Penggunaan</a></li>
+        </ul>
+    </div>
+</nav>
+
+<section class="dataset-section">
+    <h1>Tentang Dataset yang Digunakan</h1>
+    <p>Dataset yang digunakan pada aplikasi ini berasal dari Kaggle, berisi kumpulan gambar sampah rumah tangga yang dikumpulkan untuk membantu penelitian sistem daur ulang otomatis.</p>
+
+    <div class="info-row">
+        <div class="info-item">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></svg>
+            <div>
+                <h4>Sumber</h4>
+                <p>Kaggle - Garbage Classification (Mostafa Abla)</p>
+            </div>
+        </div>
+        <div class="info-item">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            <div>
+                <h4>Jumlah Gambar</h4>
+                <p>&plusmn; 15.500 gambar, 12 kategori</p>
+            </div>
+        </div>
+    </div>
+
+    <h2>Distribusi Dataset</h2>
+    <p>Jumlah gambar tidak merata di setiap kategori, kategori "clothes" dan "shoes" memiliki jumlah gambar paling banyak dibanding kategori lain.</p>
+    <div class="graph-box">
+        <img src="{{ url_for('static', filename='img/distribusi_dataset.png') }}" alt="Grafik distribusi jumlah gambar per kategori">
+    </div>
+
+    <h2>Kenapa Penting?</h2>
+    <p>Pemilahan sampah yang tepat adalah langkah awal proses daur ulang. Dengan bantuan AI, proses pemilahan bisa dilakukan lebih cepat dan konsisten dibanding pemilahan manual.</p>
+
+    <h2>Performa Model</h2>
+    <p>Berikut hasil evaluasi model Xception setelah proses training pada dataset ini.</p>
+    <div class="graph-grid">
+        <div class="graph-box">
+            <img src="{{ url_for('static', filename='img/akurasi_model.png') }}" alt="Grafik akurasi model">
+            <p class="graph-caption">Akurasi training dan validasi per epoch</p>
+        </div>
+        <div class="graph-box">
+            <img src="{{ url_for('static', filename='img/loss_model.png') }}" alt="Grafik loss model">
+            <p class="graph-caption">Loss training dan validasi per epoch</p>
+        </div>
+        <div class="graph-box">
+            <img src="{{ url_for('static', filename='img/confusion_matrix.png') }}" alt="Confusion matrix model">
+            <p class="graph-caption">Confusion matrix pada data test</p>
+        </div>
+    </div>
+
+    <h2>Keterbatasan Dataset</h2>
+    <p>Sebagian gambar pada dataset ini berasal dari web scraping, bukan foto asli sampah dari tempat pembuangan. Karena itu, akurasi model di dunia nyata mungkin sedikit berbeda dari hasil pengujian.</p>
+</section>
+
+<footer class="site-footer">
+    <p class="footer-note">Selsa Shafana Alfiyani-4B-Kecerdasan Buatan.</p>
+</footer>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
