@@ -1,8 +1,8 @@
 # app.py
-# Aplikasi Flask untuk klasifikasi sampah daur ulang menggunakan Xception
+# Aplikasi Flask untuk klasifikasi sampah daur ulang menggunakan Xception TFLite
 
 import os
-import gc  # Ditambahkan untuk membersihkan RAM secara paksa
+import gc  
 
 # --- OPTIMASI RAM UNTUK RAILWAY (Wajib di bagian paling atas sebelum import TensorFlow) ---
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
@@ -22,29 +22,37 @@ import gdown
 
 app = Flask(__name__)
 
-# ID file model dari Google Drive kamu
-GOOGLE_DRIVE_FILE_ID = "1z3obIRohkucXvCkMv7qzTWjLRx2LeOTI"
-MODEL_PATH = "xception_garbage.h5"
+# --- PERUBAHAN KE TFLITE (ID dari tautan Google Drive baru kamu) ---
+GOOGLE_DRIVE_FILE_ID = "1iix7w6ZVkDxaTRBxrzmiS8gqt9c3BTXq"
+MODEL_PATH = "xception_garbage.tflite"
 
-# Fungsi pembungkusan load model agar memori unduhan dibersihkan
+# Variabel global untuk menampung komponen TFLite Interpreter
+interpreter = None
+input_details = None
+output_details = None
+
 def init_model():
+    global interpreter, input_details, output_details
     if not os.path.exists(MODEL_PATH):
         print("Model belum ada, mengunduh dari Google Drive...")
         url = f"https://drive.google.com/uc?id={GOOGLE_DRIVE_FILE_ID}&confirm=t"
         gdown.download(url, MODEL_PATH, quiet=False)
         print("Selesai mengunduh model.")
         
-        # Bersihkan sisa buffer dari gdown di RAM sebelum load model TensorFlow
+        # Bersihkan sisa buffer dari gdown di RAM sebelum load model
         gc.collect()
 
-    print("Memuat model Xception ke RAM...")
-    # Menggunakan tf.keras bawaan tensorflow-cpu 2.15
-    loaded_model = tf.keras.models.load_model(MODEL_PATH)
-    print("Model berhasil dimuat!")
-    return loaded_model
+    print("Memuat model Xception TFLite ke RAM...")
+    # Menggunakan TFLite Interpreter alih-alih keras.models.load_model yang berat
+    interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
+    interpreter.allocate_tensors()
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    print("Model TFLite berhasil dimuat!")
 
-# Inisialisasi model
-model = init_model()
+# Inisialisasi model TFLite saat startup aplikasi
+init_model()
+# -------------------------------------------------------------------
 
 # Urutan kelas harus sama persis dengan class_indices saat training
 class_names = [
@@ -147,7 +155,8 @@ detail_info = {
 def preprocess_image(image):
     image = image.convert("RGB")
     image = image.resize((299, 299))
-    image = np.array(image) / 255.0
+    # TFLite membutuhkan tipe data float32 yang eksplisit
+    image = (np.array(image) / 255.0).astype(np.float32)
     image = np.expand_dims(image, axis=0)
     return image
 
@@ -176,7 +185,11 @@ def predict():
     image = Image.open(io.BytesIO(file.read()))
     processed_image = preprocess_image(image)
 
-    prediction = model.predict(processed_image)[0]
+    # --- PERUBAHAN PROSES PREDIKSI MENGGUNAKAN TFLITE INTERPRETER ---
+    interpreter.set_tensor(input_details[0]['index'], processed_image)
+    interpreter.invoke()
+    prediction = interpreter.get_tensor(output_details[0]['index'])[0]
+    # -----------------------------------------------------------------
 
     top_index = int(np.argmax(prediction))
     top_label = class_names[top_index]
