@@ -2,8 +2,19 @@
 # Aplikasi Flask untuk klasifikasi sampah daur ulang menggunakan Xception
 
 import os
-from flask import Flask, request, jsonify, render_template
+import gc  # Ditambahkan untuk membersihkan RAM secara paksa
+
+# --- OPTIMASI RAM UNTUK RAILWAY (Wajib di bagian paling atas sebelum import TensorFlow) ---
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 import tensorflow as tf
+# Batasi alokasi thread CPU TensorFlow agar tidak menimbun RAM
+tf.config.threading.set_intra_op_parallelism_threads(1)
+tf.config.threading.set_inter_op_parallelism_threads(1)
+# ----------------------------------------------------------------------------------------
+
+from flask import Flask, request, jsonify, render_template
 import numpy as np
 from PIL import Image
 import io
@@ -15,14 +26,25 @@ app = Flask(__name__)
 GOOGLE_DRIVE_FILE_ID = "1z3obIRohkucXvCkMv7qzTWjLRx2LeOTI"
 MODEL_PATH = "xception_garbage.h5"
 
-# Download model dari Google Drive 
-if not os.path.exists(MODEL_PATH):
-    print("Model belum ada, mengunduh dari Google Drive...")
-    url = f"https://drive.google.com/uc?id={GOOGLE_DRIVE_FILE_ID}&confirm=t"
-    gdown.download(url, MODEL_PATH, quiet=False)
-    print("Selesai mengunduh model.")
+# Fungsi pembungkusan load model agar memori unduhan dibersihkan
+def init_model():
+    if not os.path.exists(MODEL_PATH):
+        print("Model belum ada, mengunduh dari Google Drive...")
+        url = f"https://drive.google.com/uc?id={GOOGLE_DRIVE_FILE_ID}&confirm=t"
+        gdown.download(url, MODEL_PATH, quiet=False)
+        print("Selesai mengunduh model.")
+        
+        # Bersihkan sisa buffer dari gdown di RAM sebelum load model TensorFlow
+        gc.collect()
 
-model = tf.keras.models.load_model(MODEL_PATH)
+    print("Memuat model Xception ke RAM...")
+    # Menggunakan tf.keras bawaan tensorflow-cpu 2.15
+    loaded_model = tf.keras.models.load_model(MODEL_PATH)
+    print("Model berhasil dimuat!")
+    return loaded_model
+
+# Inisialisasi model
+model = init_model()
 
 # Urutan kelas harus sama persis dengan class_indices saat training
 class_names = [
@@ -32,8 +54,6 @@ class_names = [
 
 non_recyclable = ["trash"]
 
-# Kunci ikon yang dipakai di frontend, beberapa kelas berbagi ikon yang sama
-# (ketiga jenis kaca memakai ikon "glass" yang sama)
 icon_key = {
     "battery": "battery",
     "biological": "biological",
@@ -49,7 +69,6 @@ icon_key = {
     "white-glass": "glass"
 }
 
-# Informasi detail tiap kategori untuk ditampilkan di halaman hasil analisis
 detail_info = {
     "battery": {
         "tipe_material": "Limbah B3 (Bahan Berbahaya dan Beracun)",
@@ -125,12 +144,11 @@ detail_info = {
     }
 }
 
-# Preprocessing gambar sebelum masuk ke model
 def preprocess_image(image):
     image = image.convert("RGB")
-    image = image.resize((299, 299))     # Xception butuh input 299x299
-    image = np.array(image) / 255.0      # Normalisasi
-    image = np.expand_dims(image, axis=0)  # Tambah batch dimensi
+    image = image.resize((299, 299))
+    image = np.array(image) / 255.0
+    image = np.expand_dims(image, axis=0)
     return image
 
 @app.route("/")
