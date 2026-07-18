@@ -389,6 +389,12 @@ body {
     cursor: pointer;
     margin: 24px 0;
     transition: border-color var(--transition), background-color var(--transition);
+    
+    /* Tambahkan 4 baris Flexbox ini agar semua konten di dalamnya otomatis ke tengah */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .upload-box:hover {
@@ -401,6 +407,8 @@ body {
     max-height: 250px;
     border-radius: 10px;
     margin-top: 12px;
+    /* Tambahkan ini untuk memastikan proporsi gambar tetap rapi saat di tengah */
+    object-fit: contain; 
 }
 
 #uploadText {
