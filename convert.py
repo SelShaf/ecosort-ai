@@ -1,16 +1,21 @@
 import tensorflow as tf
 
-# 1. Muat model h5 kamu yang ada di laptop
+print("Memuat model H5...")
 model = tf.keras.models.load_model("xception_garbage.h5")
 
-# 2. Konversi ke format TFLite
-converter = tf.lite.TFLiteConverter.from_keras_model(model)
-# Opsional: Aktifkan optimasi ukuran (kuantisasi) agar makin ringan
-converter.optimizations = [tf.lite.Optimize.DEFAULT]
+# --- TRIK SAKTI: Paksa bungkus model dengan lapisan Softmax baru ---
+# Ini untuk memperbaiki lapisan output model H5 kamu yang mungkin kehilangan fungsi aktivasinya
+probability_model = tf.keras.Sequential([
+  model,
+  tf.keras.layers.Softmax()
+])
+
+print("Memulai konversi ke TFLite dengan perbaikan Softmax...")
+converter = tf.lite.TFLiteConverter.from_keras_model(probability_model)
 tflite_model = converter.convert()
 
-# 3. Simpan berkas hasil konversi
+# Simpan berkas hasil konversi baru
 with open("xception_garbage.tflite", "wb") as f:
     f.write(tflite_model)
 
-print("Konversi selesai! Berkas xception_garbage.tflite berhasil dibuat.")
+print("Konversi selesai! Silakan buat ulang file .onnx dari file tflite baru ini.")

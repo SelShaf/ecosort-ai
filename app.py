@@ -1,17 +1,23 @@
 # app.py
-# Aplikasi Flask untuk klasifikasi sampah daur ulang menggunakan Xception TFLite
+# Aplikasi Flask untuk klasifikasi sampah daur ulang menggunakan Xception TFLite (Bypassed via ONNX Runtime)
 
 import os
 import gc  
 
 # --- OPTIMASI RAM UNTUK RAILWAY (Wajib di bagian paling atas sebelum import TensorFlow) ---
+import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-import tensorflow as tf
-# Batasi alokasi thread CPU TensorFlow agar tidak menimbun RAM
-tf.config.threading.set_intra_op_parallelism_threads(1)
-tf.config.threading.set_inter_op_parallelism_threads(1)
+# Alternatif batasi alokasi thread CPU tanpa tf.config (Lebih aman dari error)
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+os.environ['NUMEXPR_NUM_THREADS'] = '1'
+
+# MEMAKAI ONNX RUNTIME UNTUK MENGATASI DLL WINDOWS BLOCK POLICY
+import onnxruntime as ort
 # ----------------------------------------------------------------------------------------
 
 from flask import Flask, request, jsonify, render_template
@@ -25,14 +31,13 @@ app = Flask(__name__)
 # --- PERUBAHAN KE TFLITE (ID dari tautan Google Drive baru kamu) ---
 GOOGLE_DRIVE_FILE_ID = "1iix7w6ZVkDxaTRBxrzmiS8gqt9c3BTXq"
 MODEL_PATH = "xception_garbage.tflite"
+ONNX_MODEL_PATH = "xception_garbage.onnx"
 
-# Variabel global untuk menampung komponen TFLite Interpreter
-interpreter = None
-input_details = None
-output_details = None
+# Variabel global untuk menampung komponen ONNX Session
+ort_session = None
 
 def init_model():
-    global interpreter, input_details, output_details
+    global ort_session
     if not os.path.exists(MODEL_PATH):
         print("Model belum ada, mengunduh dari Google Drive...")
         url = f"https://drive.google.com/uc?id={GOOGLE_DRIVE_FILE_ID}&confirm=t"
@@ -42,15 +47,12 @@ def init_model():
         # Bersihkan sisa buffer dari gdown di RAM sebelum load model
         gc.collect()
 
-    print("Memuat model Xception TFLite ke RAM...")
-    # Menggunakan TFLite Interpreter alih-alih keras.models.load_model yang berat
-    interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
-    interpreter.allocate_tensors()
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
-    print("Model TFLite berhasil dimuat!")
+    print("Memuat model Xception via ONNX Runtime ke RAM...")
+    # Menggunakan ONNX Runtime Session alih-alih TFLite Interpreter yang diblokir Windows DLL-nya
+    ort_session = ort.InferenceSession(ONNX_MODEL_PATH)
+    print("Model ONNX berhasil dimuat!")
 
-# Inisialisasi model TFLite saat startup aplikasi
+# Inisialisasi model saat startup aplikasi
 init_model()
 # -------------------------------------------------------------------
 
@@ -98,7 +100,7 @@ detail_info = {
     },
     "cardboard": {
         "tipe_material": "Kertas Karton",
-        "waktu_terurai": "2 bulan",
+        "waktu_terurai": "2 autism",
         "dampak_lingkungan": "Daur ulang kardus membantu mengurangi penebangan pohon untuk bahan baku kertas baru.",
         "cara_penanganan": "Lipat rapi dan pastikan kering sebelum dibuang ke tempat daur ulang kertas."
     },
@@ -155,8 +157,11 @@ detail_info = {
 def preprocess_image(image):
     image = image.convert("RGB")
     image = image.resize((299, 299))
-    # TFLite membutuhkan tipe data float32 yang eksplisit
-    image = (np.array(image) / 255.0).astype(np.float32)
+    
+    # --- PERBAIKAN NORMALISASI UNTUK XCEPTION ---
+    image = np.array(image).astype(np.float32)
+    image = (image / 127.5) - 1.0  # Ini rumus normalisasi asli Xception
+    
     image = np.expand_dims(image, axis=0)
     return image
 
@@ -185,10 +190,11 @@ def predict():
     image = Image.open(io.BytesIO(file.read()))
     processed_image = preprocess_image(image)
 
-    # --- PERUBAHAN PROSES PREDIKSI MENGGUNAKAN TFLITE INTERPRETER ---
-    interpreter.set_tensor(input_details[0]['index'], processed_image)
-    interpreter.invoke()
-    prediction = interpreter.get_tensor(output_details[0]['index'])[0]
+    # --- PROSES PREDIKSI MENGGUNAKAN ONNX RUNTIME INTERFACE (DISEMPURNAKAN) ---
+    input_name = ort_session.get_inputs()[0].name
+    
+    # Memaksa output array dibaca merata sebagai 1 dimensi berisi 12 elemen utuh
+    prediction = ort_session.run(None, {input_name: processed_image})[0].flatten()
     # -----------------------------------------------------------------
 
     top_index = int(np.argmax(prediction))
