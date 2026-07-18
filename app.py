@@ -1,25 +1,17 @@
 # app.py
-# Aplikasi Flask untuk klasifikasi sampah daur ulang menggunakan Xception TFLite (Bypassed via ONNX Runtime)
-
 import os
 import gc  
 
-# --- OPTIMASI RAM UNTUK RAILWAY (Wajib di bagian paling atas sebelum import TensorFlow) ---
-import os
+# --- OPTIMASI RAM UNTUK RAILWAY ---
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
-# Alternatif batasi alokasi thread CPU tanpa tf.config (Lebih aman dari error)
 os.environ['OMP_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
 os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
 os.environ['NUMEXPR_NUM_THREADS'] = '1'
 
-# MEMAKAI ONNX RUNTIME UNTUK MENGATASI DLL WINDOWS BLOCK POLICY
 import onnxruntime as ort
-# ----------------------------------------------------------------------------------------
-
 from flask import Flask, request, jsonify, render_template
 import numpy as np
 from PIL import Image
@@ -28,35 +20,37 @@ import gdown
 
 app = Flask(__name__)
 
-# --- PERUBAHAN KE TFLITE (ID dari tautan Google Drive baru kamu) ---
-GOOGLE_DRIVE_FILE_ID = "1iix7w6ZVkDxaTRBxrzmiS8gqt9c3BTXq"
-MODEL_PATH = "xception_garbage.tflite"
+# ==============================================================================
+# ⚠️ PERHATIAN SELSA: 
+# Hapus teks MASUKKAN_ID_FILE_ONNX_DI_SINI dan ganti dengan ID Google Drive 
+# dari file xception_garbage.onnx milikmu!
+# ==============================================================================
+GOOGLE_DRIVE_ONNX_ID = "MASUKKAN_ID_FILE_ONNX_DI_SINI"
 ONNX_MODEL_PATH = "xception_garbage.onnx"
 
-# Variabel global untuk menampung komponen ONNX Session
 ort_session = None
 
 def init_model():
     global ort_session
-    if not os.path.exists(MODEL_PATH):
-        print("Model belum ada, mengunduh dari Google Drive...")
-        url = f"https://drive.google.com/uc?id={GOOGLE_DRIVE_FILE_ID}&confirm=t"
-        gdown.download(url, MODEL_PATH, quiet=False)
-        print("Selesai mengunduh model.")
+    # Cek apakah file ONNX sudah ada, jika belum, download dari Google Drive
+    if not os.path.exists(ONNX_MODEL_PATH):
+        print("Model ONNX belum ada, mengunduh dari Google Drive...")
+        url = f"https://drive.google.com/uc?id={GOOGLE_DRIVE_ONNX_ID}&confirm=t"
+        gdown.download(url, ONNX_MODEL_PATH, quiet=False)
+        print("Selesai mengunduh model ONNX.")
         
-        # Bersihkan sisa buffer dari gdown di RAM sebelum load model
+        # Bersihkan sisa buffer dari gdown di RAM
         gc.collect()
 
     print("Memuat model Xception via ONNX Runtime ke RAM...")
-    # Menggunakan ONNX Runtime Session alih-alih TFLite Interpreter yang diblokir Windows DLL-nya
     ort_session = ort.InferenceSession(ONNX_MODEL_PATH)
     print("Model ONNX berhasil dimuat!")
 
 # Inisialisasi model saat startup aplikasi
 init_model()
+
 # -------------------------------------------------------------------
 
-# Urutan kelas harus sama persis dengan class_indices saat training
 class_names = [
     "battery", "biological", "brown-glass", "cardboard", "clothes",
     "green-glass", "metal", "paper", "plastic", "shoes", "trash", "white-glass"
@@ -100,7 +94,7 @@ detail_info = {
     },
     "cardboard": {
         "tipe_material": "Kertas Karton",
-        "waktu_terurai": "2 autism",
+        "waktu_terurai": "2 bulan",
         "dampak_lingkungan": "Daur ulang kardus membantu mengurangi penebangan pohon untuk bahan baku kertas baru.",
         "cara_penanganan": "Lipat rapi dan pastikan kering sebelum dibuang ke tempat daur ulang kertas."
     },
@@ -158,9 +152,9 @@ def preprocess_image(image):
     image = image.convert("RGB")
     image = image.resize((299, 299))
     
-    # --- PERBAIKAN NORMALISASI UNTUK XCEPTION ---
+    # Normalisasi asli Xception
     image = np.array(image).astype(np.float32)
-    image = (image / 127.5) - 1.0  # Ini rumus normalisasi asli Xception
+    image = (image / 127.5) - 1.0  
     
     image = np.expand_dims(image, axis=0)
     return image
@@ -190,12 +184,9 @@ def predict():
     image = Image.open(io.BytesIO(file.read()))
     processed_image = preprocess_image(image)
 
-    # --- PROSES PREDIKSI MENGGUNAKAN ONNX RUNTIME INTERFACE (DISEMPURNAKAN) ---
+    # Prediksi menggunakan ONNX Runtime Interface dan jadikan 1 dimensi (flatten)
     input_name = ort_session.get_inputs()[0].name
-    
-    # Memaksa output array dibaca merata sebagai 1 dimensi berisi 12 elemen utuh
     prediction = ort_session.run(None, {input_name: processed_image})[0].flatten()
-    # -----------------------------------------------------------------
 
     top_index = int(np.argmax(prediction))
     top_label = class_names[top_index]
