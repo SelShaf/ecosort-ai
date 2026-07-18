@@ -67,6 +67,16 @@ def index():
 def klasifikasi():
     return render_template('klasifikasi.html')
 
+@app.route('/tentang-dataset', methods=['GET'])
+def tentang_dataset():
+    """Halaman Informasi Dataset Kaggle"""
+    return render_template('tentang-dataset.html')
+
+@app.route('/cara-penggunaan', methods=['GET'])
+def cara_penggunaan():
+    """Halaman Panduan Penggunaan Sistem"""
+    return render_template('cara-penggunaan.html')
+
 @app.route('/predict', methods=['POST'])
 def predict():
     if ort_session is None:
