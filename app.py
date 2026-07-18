@@ -70,12 +70,12 @@ def klasifikasi():
 @app.route('/tentang-dataset', methods=['GET'])
 def tentang_dataset():
     """Halaman Informasi Dataset Kaggle"""
-    return render_template('tentang-dataset.html')
+    return render_template('tentang_dataset.html')
 
 @app.route('/cara-penggunaan', methods=['GET'])
 def cara_penggunaan():
     """Halaman Panduan Penggunaan Sistem"""
-    return render_template('cara-penggunaan.html')
+    return render_template('cara_penggunaan.html')
 
 @app.route('/predict', methods=['POST'])
 def predict():
