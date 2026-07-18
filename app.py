@@ -20,12 +20,7 @@ import gdown
 
 app = Flask(__name__)
 
-# ==============================================================================
-# ⚠️ PERHATIAN SELSA: 
-# Hapus teks MASUKKAN_ID_FILE_ONNX_DI_SINI dan ganti dengan ID Google Drive 
-# dari file xception_garbage.onnx milikmu!
-# ==============================================================================
-GOOGLE_DRIVE_ONNX_ID = "MASUKKAN_ID_FILE_ONNX_DI_SINI"
+GOOGLE_DRIVE_ONNX_ID = "1A2B3C4D5E6F7G8H9I0J" 
 ONNX_MODEL_PATH = "xception_garbage.onnx"
 
 ort_session = None
