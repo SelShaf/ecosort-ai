@@ -63,6 +63,10 @@ def preprocess_image(image_path):
 def index():
     return render_template('index.html')
 
+@app.route('/klasifikasi', methods=['GET'])
+def klasifikasi():
+    return render_template('klasifikasi.html')
+
 @app.route('/predict', methods=['POST'])
 def predict():
     if ort_session is None:
