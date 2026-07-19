@@ -155,15 +155,14 @@ detail_info = {
 }
 
 def preprocess_image(image_path):
-    """Fungsi preprocessing gambar dengan normalisasi asli Xception versi lama"""
+    """Fungsi preprocessing gambar, disesuaikan agar sama persis dengan normalisasi saat training"""
     img = cv2.imread(image_path)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = cv2.resize(img, (299, 299))
-    
-    # Menyamakan dengan rumus prapemrosesan Xception versi lama Selsa
-    img = img.astype(np.float32)
-    img = (img / 127.5) - 1.0
-    
+
+    # Normalisasi harus sama dengan rescale=1./255 yang dipakai di train_model.py
+    img = img.astype(np.float32) / 255.0
+
     img = np.expand_dims(img, axis=0)
     return img
 
